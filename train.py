@@ -14,7 +14,7 @@ from tqdm import tqdm
 # Hyperparameter definition
 BATCH_SIZE = 1000
 LEARNING_RATE = 0.005
-MAX_EPOCHS = 100
+MAX_EPOCHS = 5
 SHRINKER = 0.1
 
 # Predisposes running on GPU or CPU
@@ -32,7 +32,7 @@ out_shape = batch_generator.dataset.out_shape
 # Model Initialisation
 criterion = nn.MSELoss(reduction="mean")
 model = m.CLRM(in_shape, out_shape).to(device)
-optimiser = optim.Adam(model.parameters())
+optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 # Accuracy divisior
 one_column_entrywise_count = float(len(batch_generator.dataset)*batch_generator.dataset.out_shape[0])
@@ -57,25 +57,22 @@ for epoch in range(MAX_EPOCHS):
 
         # Calculates loss
         loss = criterion(pron, pron_hat)
-
-        naming_time = pron[:,:,-1]
-        decision_time = pron[:, :, -2]
-        pron_form = pron[:, :, :-2]
-
-        c += torch.prod(torch.tensor(naming_time.shape))
-
-        predicted_naming = pron_hat[:, :, -1]
-        predicted_decision = pron_hat[:, :, -2]
-        predicted_pron = pron_hat[:, :, :-2]
-
-        naming_eq = torch.eq(naming_time, predicted_naming)
-        decision_eq = torch.eq(decision_time, predicted_decision)
-        pron_eq = torch.eq(pron_form ,predicted_pron)
-
-        epoch_naming_corrects += float(naming_eq.sum())
-        epoch_pron_corrects += float(decision_eq.sum())
-        epoch_pron_corrects += float(pron_eq.sum())
         epoch_loss += loss
+
+        naming_time = pron[:, :, -1]
+        predicted_naming = pron_hat[:, :, -1]
+        naming_eq = torch.eq(naming_time, predicted_naming)
+        epoch_naming_corrects += float(naming_eq.sum())
+
+        decision_time = pron[:, :, -2]
+        predicted_decision = pron_hat[:, :, -2]
+        decision_eq = torch.eq(decision_time, predicted_decision)
+        epoch_decision_corrects += float(decision_eq.sum())
+        
+        pron_form = pron[:, :, :-2]
+        predicted_pron = pron_hat[:, :, :-2]
+        pron_eq = torch.eq(pron_form ,predicted_pron)
+        epoch_pron_corrects += float(pron_eq.sum())
 
         loss.backward()
         optimiser.step()
@@ -87,12 +84,13 @@ for epoch in range(MAX_EPOCHS):
     writer.add_scalar("Loss", epoch_loss, epoch)
     writer.add_scalar("Naming Accuracy", naming_accuracy, epoch)
     writer.add_scalar("Decision Accuracy", decision_accuracy, epoch)
-    writer.add_scalar("Pronuntiation Accuracy",pronuntiation_accuracy, epoch)
+    writer.add_scalar("Pronuntiation Accuracy", pronuntiation_accuracy, epoch)
     writer.add_image("Prediciton", predicted_pron[0].unsqueeze(0), epoch)
     writer.add_image("Naming Prediction", naming_time.unsqueeze(0), epoch)
     writer.add_image("Decision Prediction", decision_time.unsqueeze(0), epoch)
 
-    print(f"Epoch: {epoch}\tLoss: {epoch_loss}\tNaming Accuracy: {naming_accuracy}\tDecision Accuracy: {decision_accuracy}")
+    print(epoch_loss, epoch_pron_corrects, epoch_naming_corrects, epoch_decision_corrects)
+    print(f"Epoch: {epoch}\tLoss: {epoch_loss}\tPronuntiation Accuracy: {pronuntiation_accuracy}\tNaming Accuracy: {naming_accuracy}\tDecision Accuracy: {decision_accuracy}")
         
     
 
