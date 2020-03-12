@@ -5,7 +5,6 @@ from random import random
 def conv_dims(lenght):
     '''
     Calculates the number of nodes after the n-convs
-
     $$ \sum_{i=0}^\lambda i(\lambda-i+1) $$
     '''
     out = 0
@@ -14,6 +13,7 @@ def conv_dims(lenght):
     return out
 
 def pad(word, max_len, pad_char='_'):
+    # NOTE: padd on one side and cut max lenght to improve pron performance
     '''
     Pads a word with '_' up to max_len on both sides
     if odd chooses randomly
@@ -59,3 +59,24 @@ def int_to_padd_bin(n, max_len):
     while len(lisBin) < max_len:
         lisBin.insert(0, 0)
     return torch.tensor(lisBin).unsqueeze_(1)
+
+
+
+def binary_column_to_natural(column):
+    '''
+    turns binary column into a natural number
+    '''
+    column = column.tolist()
+    c = 0
+    for i, value in enumerate(column[::-1]):
+        c += value * 2**i 
+    return c
+
+
+def word_from_onehot(matrix, alphabet):
+    matrix = matrix.argmax(dim=0).tolist()
+    return ''.join([alphabet[i] for i in matrix])
+
+import torch
+print(binary_column_to_natural(torch.tensor([0,1,1])))
+print(word_from_onehot(torch.tensor([[1,0,0],[0,0,1],[0,1,0]]),"abc"))
