@@ -49,7 +49,6 @@ class CLRM(NConv, nn.Module):
         self.lin1 = nn.Linear(self.out_len, self.out_len//2)
         self.lin2 = nn.Linear(self.out_len//2 ,self.out_len//3)
         self.lin3 = nn.Linear(self.out_len//3, self.out_phon_n * self.out_pron_len) 
-        self.shrink = nn.Hardshrink(lambd=0.7)
         self.relu = nn.ReLU()
 
     def forward(self, x):
