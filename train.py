@@ -48,6 +48,7 @@ for epoch in range(MAX_EPOCHS):
     c = 0
 
     for word, pron in tqdm(batch_generator):
+
         pron_hat = model(word)
 
         # Calculates loss

@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 import torch.utils.data as d
 
-from utils import pad, hot_seq, string_vectoriser, int_to_padd_bin
+from utils import pad, hot_seq, string_vectoriser, double_binary,padding
 
 BIN_LOG = 22
 
@@ -23,7 +23,6 @@ class ENG_WUsL(d.Dataset):
                         how='any',
                         inplace=True)
         self.data.reset_index(inplace=True)
-
         # Dataset is ready
 
         self.len = len(self.data.index)
@@ -32,7 +31,7 @@ class ENG_WUsL(d.Dataset):
         self.word_abc = hot_seq(self.data.Word.to_list())
 
         self.in_shape = len(self.word_abc), self.word_len
-        self.out_shape = BIN_LOG, 2 # 24 is ceil(Bin_Log(max(times))), numbers
+        self.out_shape = 2*2, BIN_LOG # 24 is ceil(Bin_Log(max(times))), numbers
 
 
 
@@ -42,11 +41,16 @@ class ENG_WUsL(d.Dataset):
         x = string_vectoriser(pad(x, self.word_len), self.word_abc)
 
 
-        t_decision = int_to_padd_bin(float(self.data.I_Mean_RT.iloc[index].replace(',',''))*1000, BIN_LOG)
-        t_naming = int_to_padd_bin(float(self.data.I_NMG_Mean_RT.iloc[index].replace(',',''))*1000, BIN_LOG)
+        t_decision = padding(double_binary(self.data.I_Mean_RT.iloc[index]),BIN_LOG)
+        t_naming = padding(double_binary(self.data.I_NMG_Mean_RT.iloc[index]), BIN_LOG)
 
-        y_def = torch.cat((t_naming, t_decision), dim=1).float()
+        y_def = torch.cat((t_naming, t_decision), dim=0).float()
         return x.float().to(self.device), y_def.float().to(self.device)
 
     def __len__(self):
         return self.len
+
+if __name__ == "__main__":
+    data = ENG_WUsL()
+    for _, i in data:
+        print(i.shape)

@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from random import random
 
 def conv_dims(lenght):
@@ -58,3 +59,19 @@ def int_to_padd_bin(n, max_len):
     while len(lisBin) < max_len:
         lisBin.insert(0, 0)
     return torch.tensor(lisBin).unsqueeze_(1)
+
+
+def opposite(binary_list):
+    "returns the opposite of the binary list"
+    return [ (int(i)+1)%2 for i in binary_list ]
+
+
+def double_binary(numeral):
+    "returns binary and it's oppositi in joint tensor form"
+    numeral = int(numeral)
+    n_bin = [ int(i) for i in list(bin(numeral))[2:]]
+    o_n_bin = opposite(n_bin)
+    return torch.tensor([ n_bin , o_n_bin ])
+
+def padding(tensor, max_shape):
+    return F.pad(tensor, (max_shape-tensor.shape[-1],0,0,0), "constant", 0.5)
