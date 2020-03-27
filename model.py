@@ -46,14 +46,13 @@ class CLRM(NConv, nn.Module):
         self.out_pron_len = label_shape[1]
 
         self.convs = NConv(input_shape)
-        self.lin1 = nn.Linear(self.out_len, self.out_len//2)
-        self.lin2 = nn.Linear(self.out_len//2 ,self.out_len//3)
-        self.lin3 = nn.Linear(self.out_len//3, self.out_phon_n * self.out_pron_len) 
+        self.lin1 = nn.Linear(self.out_len, self.out_len)
+        self.lin2 = nn.Linear(self.out_len, self.out_phon_n * self.out_pron_len) 
         self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.relu(self.convs(x))
         x = self.relu(self.lin1(x))
-        x = self.relu(self.lin2(x))
-        x = self.relu(self.lin3(x))
+        x = self.sigmoid(self.lin2(x))
         return x.view(-1, self.out_phon_n, self.out_pron_len)

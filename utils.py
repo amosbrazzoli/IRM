@@ -1,7 +1,6 @@
 import torch
 from random import random
 
-
 def conv_dims(lenght):
     '''
     Calculates the number of nodes after the n-convs
