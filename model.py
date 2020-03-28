@@ -12,7 +12,7 @@ General guideline:
 class NConv(nn.Module):
     '''
     Module takes a tensor of shape (batch_size, channels, lenght)
-    Applies a 1D convolution with a kernel ok varying size from 1 up to lenght
+    Applies a 1D convolution with a kernel of varying size from 1 up to lenght
     '''
     def __init__(self, input_shape):
         super(NConv, self).__init__()
@@ -42,12 +42,15 @@ class CLRM(NConv, nn.Module):
     def __init__(self, input_shape, label_shape):
         super(CLRM, self).__init__(input_shape)
 
-        self.out_phon_n = label_shape[0]
-        self.out_pron_len = label_shape[1]
+        assert len(label_shape) == 3
+
+        self.channels = label_shape[0]
+        self.n_measure = label_shape[1]
+        self.bin_measure_lenght = label_shape[2]
 
         self.convs = NConv(input_shape)
         self.lin1 = nn.Linear(self.out_len, self.out_len)
-        self.lin2 = nn.Linear(self.out_len, self.out_phon_n * self.out_pron_len) 
+        self.lin2 = nn.Linear(self.out_len, self.channels * self.n_measure * self.bin_measure_lenght) 
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
@@ -55,4 +58,10 @@ class CLRM(NConv, nn.Module):
         x = self.relu(self.convs(x))
         x = self.relu(self.lin1(x))
         x = self.sigmoid(self.lin2(x))
-        return x.view(-1, self.out_phon_n, self.out_pron_len)
+        return x.view(-1, self.channels, self.n_measure, self.bin_measure_lenght)
+
+
+if __name__ == "__main__":
+    T = torch.rand(1,26,8)
+    model = CLRM((26,8), (2,2,22))
+    print(model(T))

@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 # Hyperparameter definition
 BATCH_SIZE = 1000
-MAX_EPOCHS = 1000
+MAX_EPOCHS = 500
 LEARNING_RATE = 0.0005
 
 # Predisposes running on GPU or CPU
@@ -34,9 +34,8 @@ model = m.CLRM(in_shape, out_shape).to(device)
 optimiser = optim.Adagrad(model.parameters())
 
 # Accuracy divisior
-one_column_entrywise_count = float(len(batch_generator.dataset)*batch_generator.dataset.out_shape[0])
-
-
+entry_count = BATCH_SIZE * (len(batch_generator.dataset)//BATCH_SIZE) * 22 * 2
+print(entry_count)
 # Tensorboard Initialisation
 writer = tb.SummaryWriter(log_dir=f"runs/{time.time()}")
 
@@ -45,29 +44,29 @@ for epoch in range(MAX_EPOCHS):
 
     epoch_loss = 0
     epoch_corrects = 0
-    c = 0
 
-    for word, pron in tqdm(batch_generator):
+    for word, label in tqdm(batch_generator):
 
-        pron_hat = model(word)
-
+        prediction = model(word)
         # Calculates loss
-        loss = criterion(pron, pron_hat)
+        loss = criterion(label, prediction)
 
         epoch_loss += loss
-        epoch_corrects += torch.sum(torch.eq(F.hardtanh(pron_hat, 0, 1), pron))
-        c += torch.prod(torch.tensor(pron.shape))
+        argmax_prediction = torch.argmax(prediction, dim = 1)
+        argmax_label = torch.argmax(label, dim = 1)
+        #print(argmax_label.shape, argmax_prediction.shape)
+        epoch_corrects += int(torch.sum(torch.eq(argmax_prediction, argmax_label)))
 
         loss.backward()
         optimiser.step()
-    print(c)
-    item_accuracy = epoch_corrects
+    item_accuracy = epoch_corrects / entry_count
+    print(epoch_corrects, entry_count)
 
 
     writer.add_scalar("Loss", epoch_loss, epoch)
     writer.add_scalar("Entry Accuracy", item_accuracy, epoch)
-    writer.add_image("Prediction", pron_hat.view(BATCH_SIZE, -1).unsqueeze(0), epoch)
-    writer.add_image("Target", pron.view(BATCH_SIZE, -1).unsqueeze(0), epoch)
+    writer.add_image("Prediction", argmax_prediction.view(BATCH_SIZE, -1).unsqueeze(0), epoch)
+    writer.add_image("Target", argmax_label.view(BATCH_SIZE, -1).unsqueeze(0), epoch)
 
     print(f"Epoch: {epoch}\tLoss: {epoch_loss}\tItem Accuracy: {item_accuracy}")
         
