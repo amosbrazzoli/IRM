@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from utils import conv_dims
+from utils import conv_dims, conv1d_len
 
 '''
 General guideline:
@@ -49,19 +50,23 @@ class CLRM(NConv, nn.Module):
         self.bin_measure_lenght = label_shape[2]
 
         self.convs = NConv(input_shape)
-        self.lin1 = nn.Linear(self.out_len, self.out_len)
-        self.lin2 = nn.Linear(self.out_len, self.channels * self.n_measure * self.bin_measure_lenght) 
+        self.conv2 = nn.Conv1d(1, 2, 5)
+        self.lin1 = nn.Linear(conv1d_len(self.out_len, 5), self.out_len)
+        self.lin2 = nn.Linear(self.out_len, self.n_measure * self.bin_measure_lenght) 
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.relu(self.convs(x))
+        x = self.relu(self.conv2(x))
         x = self.relu(self.lin1(x))
-        x = self.sigmoid(self.lin2(x))
-        return x.view(-1, self.channels, self.n_measure, self.bin_measure_lenght)
+        x = self.relu(self.lin2(x))
+        x = x.view(-1, self.channels, self.n_measure, self.bin_measure_lenght)
+        return F.softmax(x, dim=1)
+
 
 
 if __name__ == "__main__":
-    T = torch.rand(1,26,8)
+    T = torch.rand(100,26,8)
     model = CLRM((26,8), (2,2,22))
     print(model(T))

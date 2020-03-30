@@ -75,3 +75,6 @@ def double_binary(numeral):
 
 def padding(tensor, max_shape):
     return F.pad(tensor, (max_shape-tensor.shape[-1],0,0,0), "constant", 0.5)
+
+def conv1d_len(in_lenght, kernel_size ,padding=0, dilation=1, stride=1):
+    return ((in_lenght + 2 * padding - dilation * (kernel_size -1) -1) // (stride)) +1
