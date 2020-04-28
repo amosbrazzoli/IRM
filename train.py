@@ -6,69 +6,83 @@ import torch.nn.functional as F
 import torch.utils.tensorboard as tb
 
 import time
+import numpy as np
 import datasets as data
 import model as m
+import matplotlib.pyplot as plt
 
 from tqdm import tqdm
+from itertools import product
 
-# Hyperparameter definition
-BATCH_SIZE = 1000
-MAX_EPOCHS = 500
-LEARNING_RATE = 0.0005
+batches = [2000, 1000, 700, 500, 300, 100]
+learings = [.0005, .0003, .0001, .00007, .00005, .00003, .00001]
 
-# Predisposes running on GPU or CPU
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(f"Running on {device}")
+# best 500, .0005
+
+for LEARNING_RATE, BATCH_SIZE in tqdm(product(learings, batches)):
+    # Hyperparameter definition
+    MAX_EPOCHS = 12
+
+    # Predisposes running on GPU or CPU
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(f"Running on {device}")
+
+    # Data Initialisation
+    train_data = data.ENG_WUsL(5)
+    test_data = data.Test_ENG_WUsL()
+    batch_generator = d.DataLoader(train_data, BATCH_SIZE, drop_last=True)
+    test_generator = d.DataLoader(test_data, len(test_data), drop_last=False)
+    print(len(batch_generator.dataset))
+    in_shape = batch_generator.dataset.in_shape
+    out_shape = batch_generator.dataset.out_shape
+
+    # Model Initialisation
+    criterion = nn.MSELoss()
+    model = m.CLRM(in_shape, out_shape).to(device)
+    optimiser = optim.Adagrad(model.parameters(),lr=LEARNING_RATE)
+
+    # Tensorboard Initialisation
+    writer = tb.SummaryWriter(log_dir=f"runs/{time.time()}_SC-IRM:lr={LEARNING_RATE} bs={BATCH_SIZE}")
+
+    for epoch in range(MAX_EPOCHS):
+        optimiser.zero_grad()
+
+        epoch_loss = 0
+        test_loss = 0
+
+        for word, label in batch_generator:
+            prediction = model(word).squeeze()
+            # Calculates loss
+
+            loss = criterion(prediction, label)
+
+            epoch_loss += loss
+
+            loss.backward()
+            optimiser.step()
+
+        writer.add_scalar("Loss", epoch_loss, epoch)
+        writer.add_image("Prediction", prediction.unsqueeze(0), epoch)
+        writer.add_image("Target", label.view(BATCH_SIZE, -1).unsqueeze(0), epoch)
+
+        with torch.no_grad():
+            optimiser.zero_grad()
+            for test_word, test_label in test_generator:
+                test_prediction = model(test_word).squeeze()
+                # Calculates loss
+
+                t_loss = criterion(test_prediction, test_label)
+
+                test_loss += t_loss
+                arr = test_prediction.cpu().numpy()
+                np.savetxt(f"Output/ENG/Strat-{test_loss}.csv", arr)
+            optimiser.zero_grad()
+        
+        writer.add_scalar("Test Loss", test_loss, epoch)
+        writer.add_image("Test Prediction", test_prediction.unsqueeze(0), epoch)
+        writer.add_image("Test Target", test_label.view(len(test_data), -1).unsqueeze(0), epoch)
 
 
-
-# Data Initialisation
-batch_generator = d.DataLoader(data.ENG_WUsL(), BATCH_SIZE, drop_last=True)
-print(len(batch_generator.dataset))
-in_shape = batch_generator.dataset.in_shape
-out_shape = batch_generator.dataset.out_shape
-
-# Model Initialisation
-criterion = nn.MSELoss()
-model = m.CLRM(in_shape, out_shape).to(device)
-optimiser = optim.Adagrad(model.parameters())
-
-# Accuracy divisior
-entry_count = BATCH_SIZE * (len(batch_generator.dataset)//BATCH_SIZE) * 22 * 2
-print(entry_count)
-# Tensorboard Initialisation
-writer = tb.SummaryWriter(log_dir=f"runs/{time.time()}")
-
-for epoch in range(MAX_EPOCHS):
-    optimiser.zero_grad()
-
-    epoch_loss = 0
-    epoch_corrects = 0
-
-    for word, label in tqdm(batch_generator):
-
-        prediction = model(word)
-        # Calculates loss
-        loss = criterion(label, prediction)
-
-        epoch_loss += loss
-        argmax_prediction = torch.argmax(prediction, dim = 1)
-        argmax_label = torch.argmax(label, dim = 1)
-        #print(argmax_label.shape, argmax_prediction.shape)
-        epoch_corrects += int(torch.sum(torch.eq(argmax_prediction, argmax_label)))
-
-        loss.backward()
-        optimiser.step()
-    item_accuracy = epoch_corrects / entry_count
-    print(epoch_corrects, entry_count)
-
-
-    writer.add_scalar("Loss", epoch_loss, epoch)
-    writer.add_scalar("Entry Accuracy", item_accuracy, epoch)
-    writer.add_image("Prediction", argmax_prediction.view(BATCH_SIZE, -1).unsqueeze(0), epoch)
-    writer.add_image("Target", argmax_label.view(BATCH_SIZE, -1).unsqueeze(0), epoch)
-
-    print(f"Epoch: {epoch}\tLoss: {epoch_loss}\tItem Accuracy: {item_accuracy}")
         
     
 

@@ -13,6 +13,7 @@ torch = "*"
 tensorboard = "*"
 torchvision = "*"
 tqdm = "*"
+matplotlib = "*"
 
 [requires]
 python_version = "3.7"
